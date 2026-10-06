@@ -1,0 +1,6 @@
+{
+  "name": "Rental Scout",
+  "description": "Uganda's premier rental property discovery marketplace connecting tenants directly with verified landlords. Explore rental homes with verified photos, video tours, road accessibility, and instant contact unlock.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

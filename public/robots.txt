@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Allow: /search
+Allow: /property/*
+Allow: /about
+Allow: /safety
+Allow: /faq
+Allow: /terms
+Allow: /privacy
+Allow: /contact
+
+# Disallow private user, admin, payments, and internal API routes
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /account
+Disallow: /settings
+Disallow: /api/
+Disallow: /api/*
+Disallow: /private/
+
+Sitemap: https://rentalscout.ug/sitemap.xml
