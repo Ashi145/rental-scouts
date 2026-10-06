@@ -2,9 +2,11 @@
 
 > **Tagline:** Find it. See it. Connect.
 
-Rental Scout is Uganda's premier rental property discovery marketplace that connects tenants directly with verified landlords.
+Rental Scout is a Uganda-focused property marketplace that connects tenants with verified landlords and removes the need for costly middlemen and risky informal property discovery.
 
-The platform eliminates the need for tenants to physically wander through neighborhoods or pay exorbitant broker commissions (often an entire month's rent). Tenants can search verified listings, view authentic interior photos and virtual video tours, see exact distances from main transport roads, and pay a nominal **UGX 5,000** unlock fee via Mobile Money to access direct telephone and WhatsApp contact with property owners.
+The app combines a React frontend with an Express API layer, secure session handling, property discovery, contact unlock payments, landlord verification, and privacy-first serialization for exact property locations.
+
+[![CI](https://github.com/Ashi145/rental-scouts/actions/workflows/ci.yml/badge.svg)](https://github.com/Ashi145/rental-scouts/actions/workflows/ci.yml)
 
 ---
 
@@ -55,28 +57,61 @@ npm install
 ```
 
 ### 2. Environment Configuration
-Copy `.env.example` to `.env`:
+Copy the sample environment file and replace the placeholder secrets with real values for local work:
 ```bash
 cp .env.example .env
 ```
 
-### 3. Run Development Server
+Required secrets include:
+- `AUTH_SECRET`
+- `LOCATION_FUZZ_SECRET`
+- `SESSION_SECRET`
+
+The project intentionally fails closed if these are missing or still contain placeholder values.
+
+### 3. Run the app locally
 ```bash
 npm run dev
 ```
-The application will launch at `http://localhost:3000` with the Express API and Vite React frontend mounted concurrently.
+The application runs at `http://localhost:3000` with the Express API and Vite frontend together.
 
-### 4. Build for Production
+### 4. Production verification build
 ```bash
 npm run build
 npm run start
 ```
 
+### 5. Tests and checks
+```bash
+npm run test -- --run
+npm run lint
+npm run build
+```
+
+---
+
+## GitHub Actions and CI
+
+This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml` that automatically runs on pushes and pull requests to `main`.
+
+The workflow does the following:
+- installs dependencies with `npm ci`
+- runs the Vitest suite
+- runs TypeScript validation
+- builds the production bundle
+
+This ensures the app stays buildable and regression-safe in GitHub before merge.
+
 ---
 
 ## Local test data and administration
 
-Run `npm run seed:dev` to create development test data. The script refuses to run in production and generates one-time random passwords, printed only to the local console. No administrator account is seeded; create one interactively with `npm run admin:create`.
+Run `npm run seed:dev` to create development test data. The script refuses to run in production and prints one-time verification credentials only to the local console.
+
+Create an admin account for the local environment with:
+```bash
+npm run admin:create
+```
 
 ---
 
@@ -90,6 +125,18 @@ Detailed technical documentation is available in the `/docs` directory:
 - [Security Hardening & Privacy](docs/security.md)
 - [Production Deployment Checklist](docs/deployment.md)
 - [Future Mobile Application Architecture](docs/mobile-app-plan.md)
+
+---
+
+## Deployment Notes
+
+This project is a Node.js + Express application and is not a static GitHub Pages site. For real hosting, deploy it to a Node-capable environment such as Render, Railway, Fly.io, or a VPS.
+
+Recommended production setup:
+1. Set `NODE_ENV=production` and provide strong secrets in the hosting environment.
+2. Configure a real database path or persistence backend.
+3. Disable demo or sandbox flows in production.
+4. Use a real payment provider configuration only after provider verification.
 
 ---
 
