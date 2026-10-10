@@ -2,7 +2,7 @@
 
 ## 1. Prerequisites
 - Node.js 20+ runtime
-- PostgreSQL / Cloud SQL (or file-persisted store with daily backup snapshots)
+- Persistent writable storage for the SQLite database file (daily encrypted backups recommended)
 - TLS Certificate for HTTPS
 - MTN MoMo & Airtel Money production API credentials
 
@@ -19,10 +19,13 @@ npm run start
 ```
 
 ## 3. Production Environment Checklist
-- [x] HTTPS enforced via reverse proxy (Cloudflare, Nginx, or Google Cloud Run).
-- [x] `NODE_ENV=production` configured.
-- [x] `AUTH_SECRET` set to a minimum 32-character random string.
-- [x] `PAYMENT_WEBHOOK_SECRET` configured for HMAC verification.
-- [x] Security headers enabled: CSP, X-Content-Type-Options, HSTS.
-- [x] Rate limiting active on authentication and payment endpoints.
-- [x] Automated database backup snapshot cron scheduled.
+- [ ] HTTPS enforced via reverse proxy (Cloudflare, Nginx, or Google Cloud Run).
+- [ ] `NODE_ENV=production` configured.
+- [ ] `AUTH_SECRET` and `LOCATION_FUZZ_SECRET` set to unique random values of at least 32 characters.
+- [ ] Payment webhook verification configured after provider integration is implemented.
+- [ ] Review and verify production security headers and rate limits.
+- [ ] Automated SQLite-aware backup and restore process tested.
+
+## SQLite storage notes
+
+The application stores relational records in `var/rentalscout.sqlite` by default (override with `DATABASE_PATH`). The directory must be writable and persist across restarts. SQLite is a good fit for local development and a single app instance; use managed PostgreSQL before running multiple application instances or a high-write production workload. Existing JSON data in `data/rentalscout_store.json` or the former JSON file `var/rentalscout.db` is imported once into an empty SQLite database; legacy data is retained or preserved as a `.legacy.json` backup.

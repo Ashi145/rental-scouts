@@ -1,5 +1,9 @@
 # Rental Scout — Database Schema Documentation
 
+The application uses SQLite through `better-sqlite3`. Relational entities are stored in separate tables with primary keys, unique constraints, indexes, and foreign keys; property subdocuments (location, amenities, images, and video) are stored as JSON columns. The default file is `var/rentalscout.sqlite`, configurable with `DATABASE_PATH`.
+
+The database enables WAL mode and foreign-key enforcement. When the SQLite database is empty, the server imports legacy records from `data/rentalscout_store.json` or the former JSON file `var/rentalscout.db`; legacy data is retained or moved to a `.legacy.json` backup if it occupied the configured database path. Back up the database using a SQLite-aware procedure rather than copying only the main file while the application is running.
+
 ## 1. Entities & Relational Design
 
 The database schema is organized across normalized entities:

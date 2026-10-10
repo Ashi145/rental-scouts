@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
@@ -33,7 +35,12 @@ describe('baseline HTTP behavior', () => {
   });
 
   afterAll(() => {
-    // createApp does not bind a listener, so no network resources need cleanup.
+    (db as unknown as { sql: { close: () => void } }).sql.close();
+    if (process.env.DATABASE_PATH) {
+      for (const suffix of ['', '-wal', '-shm']) {
+        fs.rmSync(`${process.env.DATABASE_PATH}${suffix}`, { force: true });
+      }
+    }
   });
 
   it('exposes the API health check without starting a listener', async () => {

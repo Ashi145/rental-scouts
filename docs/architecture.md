@@ -30,7 +30,7 @@ Rental Scout ("Find it. See it. Connect.") is Uganda's premier rental property m
             ▼                               ▼
 ┌─────────────────────────┐   ┌───────────────────────────┐
 │     Payment Layer       │   │  Relational Data Storage  │
-│ ├── Sandbox Provider    │   │  JSON-backed Atomic WAL   │
+│ ├── Sandbox Provider    │   │  SQLite (WAL, foreign keys)│
 │ ├── MTN MoMo OpenAPI    │   │  Indexes & Foreign Keys   │
 │ └── Airtel Money API    │   │  Audit Logs & Unlocks     │
 └─────────────────────────┘   └───────────────────────────┘

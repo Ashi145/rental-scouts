@@ -16,7 +16,7 @@ The app combines a React frontend with an Express API layer, secure session hand
 - **Search & Discovery**: Filter by district (Kira, Ntinda, Naalya, Kololo, Muyenga, Entebbe, etc.), property type, price range in UGX, bedrooms, and distance from main tarmac roads.
 - **Visual Exploration**: High-resolution image galleries and virtual video tours.
 - **Accessibility & "Getting There"**: Straight-line and road distance in meters from main transport arteries.
-- **Contact Unlock (UGX 5,000)**: Instant unlock via MTN MoMo and Airtel Money with carrier USSD prompt simulation and instant verification.
+- **Contact Unlock (UGX 5,000)**: Backend-enforced contact-unlock flow. Production MTN MoMo and Airtel Money processing remains disabled until provider integrations and credentials are verified.
 - **Saved Favorites**: Save properties for review.
 - **Tenant Dashboard**: View unlocked contacts, call/WhatsApp direct links, and payment receipts.
 - **Fraud Reporting**: Submit reports on fake listings, incorrect locations, or price discrepancies.
@@ -43,7 +43,7 @@ The app combines a React frontend with an Express API layer, secure session hand
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, Lucide Icons
 - **Backend**: Node.js, Express, TypeScript (`tsx server.ts`)
 - **Architecture**: Modular layered architecture (Controllers, Middleware, Payment Provider Abstraction, Data Access Layer)
-- **Database**: Relational schema with atomic persistence, foreign key integrity, indexes, and comprehensive Uganda seed data
+- **Database**: SQLite relational database with foreign keys, indexes, WAL journaling, and one-time legacy JSON import
 - **Security**: Cryptographic password hashing, signed HTTP-only cookies, server-side RBAC, Content Security Policy, rate limiting, and masked identifiers
 - **Payments**: PaymentProvider abstraction supporting MTN MoMo Open API, Airtel Money, and local sandbox simulation
 
@@ -65,9 +65,8 @@ cp .env.example .env
 Required secrets include:
 - `AUTH_SECRET`
 - `LOCATION_FUZZ_SECRET`
-- `SESSION_SECRET`
 
-The project intentionally fails closed if these are missing or still contain placeholder values.
+The server intentionally fails closed if either required value is missing or is still a placeholder. The SQLite database file is configured with `DATABASE_PATH` and defaults to `var/rentalscout.sqlite`. On first startup, existing JSON records are imported from the former `var/rentalscout.db` or `data/rentalscout_store.json` path; legacy data is retained or preserved as a `.legacy.json` backup.
 
 ### 3. Run the app locally
 ```bash

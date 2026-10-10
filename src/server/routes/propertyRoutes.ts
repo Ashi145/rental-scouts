@@ -337,7 +337,7 @@ router.delete('/:id', requireAuth, (req: AuthenticatedRequest, res: Response) =>
   }
 
   db.deleteProperty(property.id);
-  return res.json({ success: true, message: 'Property removed successfully.' });
+  return res.json({ success: true, message: 'Property archived successfully.' });
 });
 
 // Favorites Toggle
