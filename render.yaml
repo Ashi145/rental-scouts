@@ -12,14 +12,19 @@ services:
         value: "10000"
       - key: DATABASE_PATH
         value: /var/data/rentalscout.sqlite
+      # IMPORTANT: Generate these locally and add manually in Render Dashboard → Environment
+      # Run: node -e "console.log('AUTH_SECRET=' + require('crypto').randomBytes(32).toString('base64url'))"
+      # Run: node -e "console.log('LOCATION_FUZZ_SECRET=' + require('crypto').randomBytes(32).toString('base64url'))"
+      # Run: node -e "console.log('SESSION_SECRET=' + require('crypto').randomBytes(32).toString('base64url'))"
+      # Run: node -e "console.log('PAYMENT_WEBHOOK_SECRET=' + require('crypto').randomBytes(32).toString('base64url'))"
       - key: AUTH_SECRET
-        generateValue: true
+        sync: false
       - key: LOCATION_FUZZ_SECRET
-        generateValue: true
+        sync: false
       - key: SESSION_SECRET
-        generateValue: true
+        sync: false
       - key: PAYMENT_WEBHOOK_SECRET
-        generateValue: true
+        sync: false
     disk:
       name: rental-scout-data
       mountPath: /var/data
