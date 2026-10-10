@@ -1,0 +1,17 @@
+# cPanel Node.js Deployment Configuration
+# This file is used by cPanel's Node.js App Manager for auto-deployment
+
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/username/public_html
+    - /bin/cp -R * $DEPLOYPATH
+    - cd $DEPLOYPATH && npm install --production
+    - cd $DEPLOYPATH && npm run build
+
+# Node.js Application Configuration
+# In cPanel: Setup Node.js App -> Create Application
+# Application root: /home/username/public_html
+# Application URL: yourdomain.com
+# Application startup file: server.js (or dist/server.js after build)
+# Node.js version: 20+
+# Environment variables: Set in cPanel Node.js App interface
