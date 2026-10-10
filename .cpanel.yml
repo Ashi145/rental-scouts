@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/ashiukiu/public_html/rental-scouts
+    - export DEPLOYPATH=/home/ashiukiu/rentalscouts.ashiraf.cc/rental-scouts
     - /bin/cp -R * $DEPLOYPATH
     - cd $DEPLOYPATH && /usr/local/bin/npm install --production
     - cd $DEPLOYPATH && /usr/local/bin/npm run build
