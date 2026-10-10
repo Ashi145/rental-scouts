@@ -1,9 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/username/public_html
+    - export DEPLOYPATH=/home/ashiraf/public_html/rental-scouts
     - /bin/cp -R * $DEPLOYPATH
     - cd $DEPLOYPATH && /usr/local/bin/npm install --production
     - cd $DEPLOYPATH && /usr/local/bin/npm run build
-    # Optional: Restart Node.js app via cPanel API (requires token)
-    # - curl -X POST "https://yourdomain.com:2083/execute/Nodejs/restart_app" -H "Authorization: cpanel username:token" -d "app=rental-scout"
