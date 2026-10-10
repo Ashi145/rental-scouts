@@ -134,9 +134,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectProperty
             Find your next home without the hassle.
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed text-balance">
-            Search rental houses across Uganda, inspect verified interior photos, see road distance, and connect directly with landlords for only <strong className="text-amber-400">UGX 5,000</strong>.
-          </p>
+<p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto font-normal leading-relaxed text-balance">
+              Search rental houses across Uganda, inspect verified interior photos, see road distance, and connect directly with landlords.
+            </p>
 
           {/* Search Card Container */}
           <div className="pt-4 max-w-4xl mx-auto">
@@ -275,7 +275,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectProperty
             </div>
             <div className="flex items-center justify-center gap-2">
               <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>Secure UGX 5k Unlock</span>
+              <span>Secure Contact Unlock</span>
             </div>
           </div>
         </div>
@@ -387,9 +387,9 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectProperty
 
             <div className="p-6 rounded-xl bg-slate-50 border border-slate-100 space-y-3">
               <span className="text-amber-600 font-extrabold text-sm font-mono">02.</span>
-              <h3 className="text-base font-bold text-slate-900">Unlock Direct Landlord Contact</h3>
+<h3 className="text-base font-bold text-slate-900">Unlock Direct Landlord Contact</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Pay a small fee of <strong className="text-slate-900">UGX 5,000</strong> via MTN MoMo or Airtel Money. Our backend instantly confirms the transaction and reveals the verified property owner’s direct phone and WhatsApp.
+                Pay a small fee via MTN MoMo or Airtel Money. Our backend instantly confirms the transaction and reveals the verified property owner's direct phone and WhatsApp.
               </p>
             </div>
 
