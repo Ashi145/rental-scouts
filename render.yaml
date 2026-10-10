@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: rental-scout
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: DATABASE_PATH
+        value: /var/data/rentalscout.sqlite
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: LOCATION_FUZZ_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: PAYMENT_WEBHOOK_SECRET
+        generateValue: true
+    disk:
+      name: rental-scout-data
+      mountPath: /var/data
+      sizeGB: 1
