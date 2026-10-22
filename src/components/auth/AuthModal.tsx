@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { X, Lock, Mail, User, Phone, Building2, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -7,6 +7,7 @@ interface AuthModalProps {
   initialMode: 'login' | 'register';
   initialRole?: 'TENANT' | 'LANDLORD';
   onClose: () => void;
+  onAuthenticated: (role: 'TENANT' | 'LANDLORD' | 'ADMIN') => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -14,6 +15,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialMode,
   initialRole = 'TENANT',
   onClose,
+  onAuthenticated,
 }) => {
   const { login, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
@@ -28,6 +30,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setRole(initialRole);
+      setError('');
+    }
+  }, [isOpen, initialMode, initialRole]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,10 +46,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
 
     try {
+      let authenticatedRole: 'TENANT' | 'LANDLORD' | 'ADMIN';
       if (mode === 'login') {
-        await login({ email, password });
+        authenticatedRole = await login({ email, password });
       } else {
-        await register({
+        authenticatedRole = await register({
           email,
           password,
           fullName,
@@ -50,6 +61,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           businessName: role === 'LANDLORD' && businessName ? businessName : undefined,
         });
       }
+      onAuthenticated(authenticatedRole);
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Authentication failed.');

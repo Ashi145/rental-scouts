@@ -57,10 +57,22 @@ router.post('/initiate', requireAuth, async (req: AuthenticatedRequest, res: Res
   }
 });
 
-router.get('/:id/status', requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  const transaction = db.getTransactionById(req.params.id);
+router.get('/:id/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  let transaction = db.getTransactionById(req.params.id);
   if (!transaction || (transaction.tenantId !== req.user!.id && req.user!.role !== 'ADMIN')) {
     return res.status(404).json({ error: 'Payment not found.' });
+  }
+
+  // Recover from delayed/missed webhooks by asking PesaJet for the authoritative
+  // transaction status when the tenant checks their pending payment.
+  if (transaction.provider === 'PESAJET' && transaction.providerTransactionId
+    && ['PENDING', 'PROCESSING'].includes(transaction.status)) {
+    try {
+      await paymentService.completeAndVerifyTransaction(transaction.id);
+      transaction = db.getTransactionById(transaction.id)!;
+    } catch (error) {
+      console.error('PesaJet payment status check failed:', error instanceof Error ? error.message : 'Unknown error');
+    }
   }
 
   const unlock = transaction.status === 'SUCCESS'
@@ -96,9 +108,23 @@ router.get('/:id/status', requireAuth, (req: AuthenticatedRequest, res: Response
   });
 });
 
-// Until provider callbacks can be validated and re-queried using official adapters,
-// callbacks are acknowledged but never mutate transactions or unlock contacts.
-router.post('/webhook/:provider', (_req, res) => res.status(202).json({ status: 'accepted' }));
+router.post('/webhook/:provider', async (req, res) => {
+  const verified = await paymentService.verifyWebhook({
+    headers: req.headers,
+    body: req.body && typeof req.body === 'object' ? req.body as Record<string, unknown> : {},
+  }, req.params.provider);
+
+  if (!verified.success) {
+    return res.status(401).json({ error: verified.failureReason || 'Invalid payment webhook.' });
+  }
+
+  // Acknowledge a valid signed event immediately. Re-query PesaJet in the
+  // background before recording a success or unlocking landlord contact.
+  res.status(200).json({ received: true });
+  void paymentService.processVerifiedWebhook(verified).catch(error => {
+    console.error('PesaJet webhook processing failed:', error instanceof Error ? error.message : 'Unknown error');
+  });
+});
 
 if (process.env.NODE_ENV !== 'production' && process.env.PAYMENT_PROVIDER?.toLowerCase() === 'sandbox') {
   router.post('/dev/payments/:id/simulate', requireAuth, async (req: AuthenticatedRequest, res: Response) => {

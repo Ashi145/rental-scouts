@@ -1,10 +1,12 @@
 import crypto from 'crypto';
 import { db } from '../db/database.ts';
 import { ContactUnlock, PaymentTransaction, TransactionStatus } from '../db/schema.ts';
-import { InitiatePaymentParams, InitiatePaymentResult, PaymentProvider, WebhookPayload } from './types.ts';
+import { InitiatePaymentParams, InitiatePaymentResult, PaymentProvider, WebhookPayload, WebhookResult } from './types.ts';
 import { SandboxPaymentProvider } from './providers/sandboxProvider.ts';
 import { MtnMomoPaymentProvider } from './providers/mtnProvider.ts';
 import { AirtelMoneyPaymentProvider } from './providers/airtelProvider.ts';
+import { PesaJetPaymentProvider } from './providers/pesajetProvider.ts';
+import { PesaJetError } from '@pesajet/sdk';
 import { isValidUgandanPhone, normalizeUgandanPhone } from '../auth/authService.ts';
 
 export const UNLOCK_FEE_UGX = Number(process.env.UNLOCK_FEE_UGX || 5000);
@@ -19,12 +21,15 @@ export class PaymentUnavailableError extends Error {
 class PaymentService {
   private providers: Map<string, PaymentProvider> = new Map();
   private sandboxEnabled: boolean;
+  private pesajetEnabled: boolean;
 
   constructor() {
     this.sandboxEnabled = process.env.NODE_ENV !== 'production' && process.env.PAYMENT_PROVIDER?.toLowerCase() === 'sandbox';
+    this.pesajetEnabled = process.env.PAYMENT_PROVIDER?.toLowerCase() === 'pesajet';
     if (this.sandboxEnabled) this.providers.set('SANDBOX', new SandboxPaymentProvider());
     this.providers.set('MTN_MOMO', new MtnMomoPaymentProvider());
     this.providers.set('AIRTEL_MONEY', new AirtelMoneyPaymentProvider());
+    this.providers.set('PESAJET', new PesaJetPaymentProvider());
   }
 
   private getProvider(method?: string): PaymentProvider {
@@ -32,6 +37,10 @@ class PaymentService {
       throw new Error('Unsupported payment provider.');
     }
     if (this.sandboxEnabled) return this.providers.get('SANDBOX')!;
+    if (this.pesajetEnabled) {
+      if (!process.env.PESAJET_API_KEY || !process.env.PESAJET_WEBHOOK_SECRET) throw new PaymentUnavailableError();
+      return this.providers.get('PESAJET')!;
+    }
 
     // Provider adapters are intentionally unavailable until their API integrations
     // are verified and credentials are configured; never return a simulated success.
@@ -106,7 +115,7 @@ class PaymentService {
       : '***';
 
     // 6. Create initial pending transaction in database (Strictly 5,000 UGX from backend)
-    const providerNameEnum = provider.name as 'MTN_MOMO' | 'AIRTEL_MONEY' | 'PESAPAL' | 'SANDBOX';
+    const providerNameEnum = provider.name as 'MTN_MOMO' | 'AIRTEL_MONEY' | 'PESAJET' | 'SANDBOX';
 
     const transaction = db.createTransaction({
       tenantId,
@@ -135,22 +144,40 @@ class PaymentService {
       });
 
       // Update transaction with provider ID and processing status
+      const statusBeforeUnlock = providerRes.status === 'SUCCESS' ? 'PROCESSING' : providerRes.status;
       db.updateTransaction(transaction.id, {
         providerTransactionId: providerRes.providerTransactionId,
-        status: providerRes.status,
+        status: statusBeforeUnlock,
       });
+
+      const completed = providerRes.status === 'SUCCESS'
+        ? db.completeSuccessfulUnlock(transaction.id, db.resolvePropertyContact(transaction.propertyId))
+        : undefined;
 
       return {
         transaction: {
           ...transaction,
           providerTransactionId: providerRes.providerTransactionId,
-          status: providerRes.status,
+          status: completed?.transaction.status || statusBeforeUnlock,
         },
         requiresAction: true,
         actionType: 'USSD_PUSH',
         instructions: providerRes.instructions,
       };
     } catch (err: unknown) {
+      if (provider.name === 'PESAJET' && err instanceof PesaJetError
+        && (err.statusCode === 408 || err.statusCode === 500 || err.errorCode === 'NETWORK_ERROR')) {
+        const pendingTransaction = db.updateTransaction(transaction.id, {
+          status: 'PROCESSING',
+          failureReason: 'PesaJet did not return a response; waiting for provider confirmation.',
+        })!;
+        return {
+          transaction: pendingTransaction,
+          requiresAction: true,
+          actionType: 'POLL',
+          instructions: 'We are waiting to confirm whether the mobile money prompt was sent. Please wait for an update and do not retry yet.',
+        };
+      }
       db.updateTransaction(transaction.id, {
         status: 'FAILED',
         failureReason: err instanceof Error ? err.message : 'Provider initiation failed',
@@ -159,7 +186,7 @@ class PaymentService {
     }
   }
 
-  public async completeAndVerifyTransaction(transactionId: string): Promise<{
+  public async completeAndVerifyTransaction(transactionId: string, providerTransactionIdOverride?: string): Promise<{
     transaction: PaymentTransaction;
     contactUnlock?: ContactUnlock;
   }> {
@@ -176,9 +203,16 @@ class PaymentService {
 
     const provider = this.getProvider(transaction.paymentMethod);
     const verification = await provider.verifyPayment(
-      transaction.providerTransactionId || '',
+      providerTransactionIdOverride || transaction.providerTransactionId || '',
       transaction.internalReference
     );
+
+    if (transaction.provider === 'PESAJET' && !verification.providerTransactionId) {
+      throw new Error(verification.failureReason || 'PesaJet transaction could not be verified.');
+    }
+    if (verification.providerTransactionId) {
+      db.updateTransaction(transaction.id, { providerTransactionId: verification.providerTransactionId, status: 'PROCESSING' });
+    }
 
     if (verification.status === 'SUCCESS') {
       const contactInfo = db.resolvePropertyContact(transaction.propertyId);
@@ -194,10 +228,25 @@ class PaymentService {
     }
   }
 
-  public async handleWebhook(payload: WebhookPayload, providerName?: string): Promise<{ success: boolean; message: string }> {
-    void payload;
-    void providerName;
-    return { success: false, message: 'Provider webhook verification is not configured.' };
+  public async verifyWebhook(payload: WebhookPayload, providerName?: string): Promise<WebhookResult> {
+    if (providerName?.toLowerCase() !== 'pesajet') {
+      return { success: false, failureReason: 'Unsupported payment webhook provider.' };
+    }
+    return this.providers.get('PESAJET')!.verifyAndParseWebhook(payload);
+  }
+
+  public async processVerifiedWebhook(result: WebhookResult): Promise<void> {
+    if (!result.success || !result.internalReference || !result.providerTransactionId) return;
+    const transaction = db.getTransactionById(result.internalReference);
+    if (!transaction || transaction.provider !== 'PESAJET'
+      || (transaction.providerTransactionId && transaction.providerTransactionId !== result.providerTransactionId)
+      || transaction.amountUGX !== result.amount || transaction.currency !== result.currency) {
+      throw new Error('PesaJet webhook does not match a local transaction.');
+    }
+
+    // The signed webhook is a prompt to check; the authenticated PesaJet API result
+    // remains authoritative before any contact details are unlocked.
+    await this.completeAndVerifyTransaction(transaction.id, result.providerTransactionId);
   }
 }
 

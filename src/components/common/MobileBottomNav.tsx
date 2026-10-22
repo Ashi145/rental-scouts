@@ -49,7 +49,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ currentView, o
         <button
           onClick={() => {
             if (!user) {
-              onOpenAuth('login');
+              onNavigate('auth', 'landlord');
             } else if (user.role === 'LANDLORD') {
               onNavigate('landlord-dashboard', 'new');
             } else {

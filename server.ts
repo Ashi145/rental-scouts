@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import crypto from 'crypto';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import authRoutes from './src/server/routes/authRoutes.ts';
@@ -14,7 +15,7 @@ import notificationRoutes from './src/server/routes/notificationRoutes.ts';
 import { securityHeadersMiddleware, errorHandlerMiddleware } from './src/server/middleware/securityMiddleware.ts';
 import { rateLimit } from './src/server/middleware/rateLimitMiddleware.ts';
 import { assertSecuritySecrets } from './src/server/auth/authService.ts';
-import { authMiddleware } from './src/server/middleware/authMiddleware.ts';
+import { authMiddleware, requireAuth, requireRole, AuthenticatedRequest } from './src/server/middleware/authMiddleware.ts';
 
 dotenv.config();
 
@@ -42,6 +43,25 @@ export async function createApp(options: { serveFrontend?: boolean } = {}) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
   app.use('/uploads', express.static(uploadsDir));
+
+  // Accept image bytes only from authenticated landlords/admins. The image type is
+  // checked against its file signature before it is written to the public uploads dir.
+  app.post('/api/uploads/images', requireAuth, requireRole(['LANDLORD', 'ADMIN']), express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '10mb' }), (req: AuthenticatedRequest, res) => {
+    const body = req.body as Buffer;
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      return res.status(400).json({ error: 'INVALID_IMAGE', message: 'Choose an image file to upload.' });
+    }
+
+    let extension: string | undefined;
+    if (body.length >= 3 && body[0] === 0xff && body[1] === 0xd8 && body[2] === 0xff) extension = 'jpg';
+    else if (body.length >= 8 && body.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) extension = 'png';
+    else if (body.length >= 12 && body.toString('ascii', 0, 4) === 'RIFF' && body.toString('ascii', 8, 12) === 'WEBP') extension = 'webp';
+    if (!extension) return res.status(400).json({ error: 'INVALID_IMAGE', message: 'The file is not a valid JPG, PNG, or WebP image.' });
+
+    const filename = `${crypto.randomUUID()}.${extension}`;
+    fs.writeFileSync(path.join(uploadsDir, filename), body, { flag: 'wx' });
+    return res.status(201).json({ url: `/uploads/${filename}` });
+  });
 
   // Rate Limiting
   const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, maxRequests: 60, message: 'Too many authentication attempts.', keyPrefix: 'auth' });

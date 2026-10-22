@@ -88,7 +88,7 @@ describe('baseline HTTP behavior', () => {
       .post('/api/payments/webhook/MTN_MOMO')
       .set('x-provider', 'SANDBOX')
       .send({ internalReference: 'transaction-id', status: 'SUCCESS' });
-    expect(callback.status).toBe(202);
+    expect(callback.status).toBe(401);
     expect(db.getAllContactUnlocks()).toHaveLength(unlockCount);
   });
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.tsx';
 import { api } from '../services/api.ts';
 import { Property, LandlordProfile, LandlordRole } from '../types/index.ts';
+import samplePropertyImage from '../assets/images/property_apartment_kira_1791212350054.jpg';
 import { ContactPrivacySettings } from '../components/landlord/ContactPrivacySettings.tsx';
 import {
   Building2,
@@ -31,7 +32,7 @@ interface LandlordDashboardProps {
 }
 
 export const LandlordDashboard: React.FC<LandlordDashboardProps> = ({ initialAction, onNavigate, onSelectProperty }) => {
-  const { user, landlordProfile, refreshUser } = useAuth();
+  const { user, landlordProfile, refreshUser, loading: authLoading } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [stats, setStats] = useState({
     totalListings: 0,
@@ -48,6 +49,8 @@ export const LandlordDashboard: React.FC<LandlordDashboardProps> = ({ initialAct
   const [isWizardOpen, setIsWizardOpen] = useState(initialAction === 'new');
   const [wizardStep, setWizardStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState('');
 
   // Property Form Data
   const [formData, setFormData] = useState({
@@ -70,16 +73,7 @@ export const LandlordDashboard: React.FC<LandlordDashboardProps> = ({ initialAct
     longitude: 32.6398,
     publicDescription: '',
     amenities: ['Security Guard', 'NWSC Water', 'Dedicated Yaka Meter', 'Paved Compound'],
-    images: [
-      {
-        id: 'img_new_1',
-        propertyId: '',
-        url: '/src/assets/images/property_apartment_kira_1791212350054.jpg',
-        caption: 'Living room',
-        isPrimary: true,
-        order: 0,
-      },
-    ],
+    images: [] as Property['images'],
     videoUrl: '',
     useCustomContact: false,
     customContactName: '',
@@ -115,8 +109,8 @@ export const LandlordDashboard: React.FC<LandlordDashboardProps> = ({ initialAct
   };
 
   useEffect(() => {
-    loadLandlordData();
-  }, []);
+    if (user && ['LANDLORD', 'ADMIN'].includes(user.role)) void loadLandlordData();
+  }, [user]);
 
   const handleCreateProperty = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,6 +180,35 @@ export const LandlordDashboard: React.FC<LandlordDashboardProps> = ({ initialAct
     }
   };
 
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setImageUploadError('');
+    setUploadingImages(true);
+    try {
+      const uploaded: typeof formData.images = [];
+      for (const file of Array.from(files)) {
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+          throw new Error(`${file.name}: choose a JPG, PNG, or WebP image.`);
+        }
+        if (file.size > 10 * 1024 * 1024) throw new Error(`${file.name}: image must be 10 MB or smaller.`);
+        const result = await api.uploads.image(file);
+        uploaded.push({
+          id: `img_${Date.now()}_${uploaded.length}`,
+          propertyId: '',
+          url: result.url,
+          caption: file.name,
+          isPrimary: formData.images.length === 0 && uploaded.length === 0,
+          order: formData.images.length + uploaded.length,
+        });
+      }
+      setFormData(current => ({ ...current, images: [...current.images, ...uploaded] }));
+    } catch (err) {
+      setImageUploadError(err instanceof Error ? err.message : 'Image upload failed. Please try again.');
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
   const handleSubmitVerification = async (e: React.FormEvent) => {
     e.preventDefault();
     setVerifyLoading(true);
@@ -211,6 +234,21 @@ export const LandlordDashboard: React.FC<LandlordDashboardProps> = ({ initialAct
       setVerifyLoading(false);
     }
   };
+
+  if (authLoading) {
+    return <div className="max-w-7xl mx-auto px-4 py-16 text-center text-slate-600">Checking your account…</div>;
+  }
+  if (!user || !['LANDLORD', 'ADMIN'].includes(user.role)) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4">
+        <Building2 className="w-10 h-10 mx-auto text-amber-600" />
+        <h1 className="text-2xl font-bold text-slate-900">Sign in as a landlord to list a property</h1>
+        <p className="text-slate-600">Create or sign in to a landlord account to manage listings. You can still browse available rentals from Search Rentals.</p>
+        <button onClick={() => onNavigate('auth', 'landlord')} className="px-5 py-2.5 rounded-lg bg-slate-900 text-white font-semibold">Continue as a landlord</button>
+        <button onClick={() => onNavigate('search')} className="ml-2 px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-semibold">Browse rentals</button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -249,6 +287,12 @@ export const LandlordDashboard: React.FC<LandlordDashboardProps> = ({ initialAct
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => onNavigate('search')}
+            className="py-2.5 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors"
+          >
+            Browse Rentals
+          </button>
           {landlordProfile?.verificationStatus !== 'VERIFIED' && (
             <button
               onClick={() => setIsVerifyModalOpen(true)}
@@ -713,12 +757,23 @@ export const LandlordDashboard: React.FC<LandlordDashboardProps> = ({ initialAct
                     </label>
                     <div className="p-4 border-2 border-dashed border-slate-200 rounded-xl text-center space-y-2 bg-slate-50">
                       <Upload className="w-6 h-6 text-slate-400 mx-auto" />
-                      <p className="text-xs text-slate-600 font-medium">
-                        Standard property images attached for this preview
-                      </p>
+                      <label className="inline-flex cursor-pointer items-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+                        {uploadingImages ? 'Uploading…' : 'Choose property photos'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploadingImages} className="sr-only" onChange={e => { void handleImageUpload(e.target.files); e.currentTarget.value = ''; }} />
+                      </label>
+                      <p className="text-xs text-slate-600 font-medium">{formData.images.length} photo{formData.images.length === 1 ? '' : 's'} selected</p>
                       <p className="text-[11px] text-slate-400">
-                        Supports high-resolution JPG, PNG, and WebP up to 10MB each.
+                        JPG, PNG, and WebP up to 10 MB each.
                       </p>
+                      {imageUploadError && <p role="alert" className="text-xs text-rose-600">{imageUploadError}</p>}
+                      <div className="grid grid-cols-3 gap-2 text-left">
+                        {formData.images.map((image, index) => (
+                          <div key={image.id} className="relative">
+                            <img src={image.url} alt={image.caption || `Property photo ${index + 1}`} className="h-20 w-full rounded-lg object-cover" />
+                            <button type="button" aria-label={`Remove photo ${index + 1}`} onClick={() => setFormData(current => ({ ...current, images: current.images.filter(item => item.id !== image.id).map((item, order) => ({ ...item, order, isPrimary: order === 0 })) }))} className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-rose-600"><X className="h-3 w-3" /></button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -743,7 +798,7 @@ export const LandlordDashboard: React.FC<LandlordDashboardProps> = ({ initialAct
                     <div className="max-w-sm mx-auto bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
                       <div className="aspect-[4/3] bg-slate-100 relative">
                         <img
-                          src={formData.images[0]?.url || '/src/assets/images/property_apartment_kira_1791212350054.jpg'}
+                          src={formData.images[0]?.url || samplePropertyImage}
                           alt=""
                           className="w-full h-full object-cover"
                         />

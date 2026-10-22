@@ -35,6 +35,8 @@ export interface WebhookResult {
   internalReference?: string;
   providerTransactionId?: string;
   status?: TransactionStatus;
+  amount?: number;
+  currency?: string;
   failureReason?: string;
   isDuplicate?: boolean;
 }

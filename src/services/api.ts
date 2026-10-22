@@ -23,6 +23,19 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
+  uploads: {
+    image: async (file: File): Promise<{ url: string }> => {
+      const res = await fetch(`${API_BASE}/uploads/images`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+        credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error || `Upload failed (${res.status})`);
+      return data as { url: string };
+    },
+  },
   // Auth
   auth: {
     me: () => request<{ user: User | null; landlordProfile?: LandlordProfile }>('/auth/me'),

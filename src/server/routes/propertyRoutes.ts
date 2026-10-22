@@ -217,16 +217,7 @@ router.post('/', requireAuth, requireRole(['LANDLORD', 'ADMIN']), (req: Authenti
         longitude: Number(location.longitude || 32.5825),
         publicDescription: location.publicDescription || '',
       },
-      images: Array.isArray(images) && images.length > 0 ? images : [
-        {
-          id: `img_${Date.now()}`,
-          propertyId: '',
-          url: '/src/assets/images/property_apartment_kira_1791212350054.jpg',
-          caption: 'Property view',
-          isPrimary: true,
-          order: 0,
-        },
-      ],
+      images: Array.isArray(images) ? images : [],
       video: videoUrl
         ? {
             id: `vid_${Date.now()}`,

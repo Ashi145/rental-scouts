@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, LandlordProfile } from '../types/index.ts';
+import { User, LandlordProfile, UserRole } from '../types/index.ts';
 import { api } from '../services/api.ts';
 
 interface AuthContextType {
@@ -7,7 +7,7 @@ interface AuthContextType {
   landlordProfile: LandlordProfile | null;
   loading: boolean;
   unreadNotifications: number;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
+  login: (credentials: { email: string; password: string }) => Promise<UserRole>;
   register: (data: {
     email: string;
     password: string;
@@ -17,7 +17,7 @@ interface AuthContextType {
     landlordRole?: 'LANDLORD' | 'LANDLADY' | 'PROPERTY_OWNER' | 'PROPERTY_MANAGER';
     secondaryPhone?: string;
     businessName?: string;
-  }) => Promise<void>;
+  }) => Promise<UserRole>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -56,8 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (credentials: { email: string; password: string }) => {
-    await api.auth.login(credentials);
+    const data = await api.auth.login(credentials);
     await fetchCurrentUser();
+    return data.user.role;
   };
 
   const register = async (data: {
@@ -70,8 +71,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     secondaryPhone?: string;
     businessName?: string;
   }) => {
-    await api.auth.register(data);
+    const result = await api.auth.register(data);
     await fetchCurrentUser();
+    return result.user.role;
   };
 
   const logout = async () => {

@@ -33,7 +33,26 @@ Tenant Browser                   Rental Scout Server              Mobile Money G
      │<───────────────────────────────────┤                                      │
 ```
 
-## 3. Environment Variables
+## 3. PesaJet Configuration
+
+This application uses PesaJet's official `@pesajet/sdk` Node.js package for MTN and Airtel collections. The SDK sends the API key in the `X-API-Key` header and supports `payments.create`, `payments.get`, and HMAC-SHA256 webhook verification.
+
+Set these server environment variables in `.env` locally and in the production host's secret settings:
+
+```bash
+PAYMENT_PROVIDER=pesajet
+UNLOCK_FEE_UGX=5000
+PESAJET_API_KEY=pk_your_active_merchant_api_key
+PESAJET_WEBHOOK_SECRET=whsec_your_webhook_signing_secret
+# Optional: SDK defaults to https://payments.pesajet.com/api/v1
+PESAJET_BASE_URL=
+```
+
+Use the API key and webhook signing secret from the PesaJet merchant dashboard. The separate PesaJet API secret is not an option in this SDK and is not sent by this integration. Never put any credential in frontend code or commit it to Git.
+
+Configure PesaJet's webhook URL as `https://<your-domain>/api/payments/webhook/pesajet`. Signed events are verified, matched to the locally stored amount, currency, reference and provider transaction ID, then checked against `payments.get` before an unlock is recorded. Pending status checks also query PesaJet so delayed webhooks do not permanently strand a payment.
+
+## 4. Other Environment Variables
 
 Configure in `.env`:
 
@@ -57,7 +76,7 @@ AIRTEL_API_SECRET=your_airtel_money_api_secret
 
 *Note: Never place real secrets in source control or client code.*
 
-## 4. Key Security Rules
+## 5. Key Security Rules
 
 1. **Server Enforces 5,000 UGX**: The backend ignores any amount sent by client requests.
 2. **Duplicate Payment Prevention**: If tenant has already unlocked the property, the existing unlock is returned without re-charging.

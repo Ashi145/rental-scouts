@@ -147,7 +147,7 @@ export interface PaymentTransaction {
   landlordId: string;
   amountUGX: number;
   currency: string;
-  provider: 'MTN_MOMO' | 'AIRTEL_MONEY' | 'PESAPAL' | 'SANDBOX';
+  provider: 'MTN_MOMO' | 'AIRTEL_MONEY' | 'PESAJET' | 'SANDBOX';
   providerTransactionId?: string;
   internalReference: string;
   status: TransactionStatus;

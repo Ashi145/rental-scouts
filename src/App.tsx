@@ -174,6 +174,11 @@ function MainApp() {
         isOpen={authModalOpen}
         initialMode={authMode}
         initialRole={authRole}
+        onAuthenticated={role => {
+          if (role === 'LANDLORD') navigate('landlord-dashboard');
+          else if (role === 'ADMIN') navigate('admin-dashboard');
+          else navigate('home');
+        }}
         onClose={() => setAuthModalOpen(false)}
       />
     </div>
